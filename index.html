@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>A+M TV Stream - Database IPTV</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.8"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: #020817; color: #eef2ff; overflow-x: hidden; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; background: rgba(2, 8, 23, 0.85); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(0, 229, 255, 0.3); position: sticky; top: 0; z-index: 100; }
+        .logo-area { display: flex; align-items: center; gap: 12px; }
+        .site-logo { width: 100px; height: 72px; background: linear-gradient(135deg, #00e5ff, #0077ff); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 22px; font-family: 'Orbitron', monospace; }
+        .title-sub h1 { font-size: 1.4rem; font-weight: 700; background: linear-gradient(135deg, #fff, #00e5ff); -webkit-background-clip: text; background-clip: text; color: transparent; }
+        .live-badge { background: #ff2a2a; padding: 6px 14px; border-radius: 40px; font-weight: 800; font-size: 0.8rem; animation: pulseRed 1.2s infinite; }
+        .admin-link { background: rgba(0,229,255,0.2); padding: 8px 12px; border-radius: 32px; text-decoration: none; color: #eef2ff; }
+        @keyframes pulseRed { 0% { opacity: 0.8; } 100% { opacity: 1; } }
+        .player-section { padding: 20px; max-width: 1400px; margin: 0 auto; }
+        .video-container { position: relative; background: #000; border-radius: 32px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.6); }
+        #videoPlayer { width: 100%; background: #000; display: block; }
+        .channel-overlay { position: absolute; top: 16px; left: 16px; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); padding: 8px 16px; border-radius: 40px; display: flex; align-items: center; gap: 12px; border-left: 3px solid #00e5ff; }
+        .channel-overlay img { width: 32px; height: 32px; border-radius: 8px; }
+        .time-overlay { position: absolute; bottom: 70px; right: 16px; background: rgba(0,0,0,0.6); padding: 4px 10px; border-radius: 20px; font-family: monospace; font-size: 0.8rem; }
+        .buffer-animation { position: absolute; top: 50%; left: 50%; width: 48px; height: 48px; border: 4px solid rgba(0,229,255,0.3); border-top: 4px solid #00e5ff; border-radius: 50%; animation: spin 1s linear infinite; display: none; }
+        @keyframes spin { 0% { transform: translate(-50%, -50%) rotate(0deg); } 100% { transform: translate(-50%, -50%) rotate(360deg); } }
+        .player-controls { display: flex; gap: 15px; padding: 12px 20px; background: rgba(2,8,23,0.9); border-radius: 60px; margin-top: 12px; justify-content: center; }
+        .ctrl-btn { background: none; border: none; color: #ccd6f0; font-size: 1.4rem; cursor: pointer; }
+        .ctrl-btn:hover { color: #00e5ff; }
+        .ticker-wrap { background: #02101f; border-top: 1px solid #00e5ff40; border-bottom: 1px solid #00e5ff40; margin: 12px 0; overflow: hidden; white-space: nowrap; }
+        .ticker { display: inline-block; padding: 10px 0; animation: scrollTicker 28s linear infinite; }
+        @keyframes scrollTicker { 0% { transform: translateX(0%); } 100% { transform: translateX(-50%); } }
+        .search-filter-area { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 28px; padding: 0 20px; }
+        .search-box { flex: 1; background: rgba(255,255,255,0.05); border-radius: 48px; padding: 8px 18px; display: flex; gap: 10px; border: 1px solid #2a3a6e; }
+        .search-box input { background: transparent; border: none; width: 100%; color: white; outline: none; }
+        .filter-group { display: flex; flex-wrap: wrap; gap: 8px; }
+        .filter-chip { background: #0f172f; padding: 6px 18px; border-radius: 40px; cursor: pointer; font-size: 0.8rem; }
+        .filter-chip.active, .filter-chip:hover { background: #00e5ff; color: #020817; }
+        .channel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 20px; padding: 20px; }
+        .channel-card { background: rgba(8, 18, 38, 0.8); backdrop-filter: blur(8px); border-radius: 28px; padding: 16px; text-align: center; cursor: pointer; border: 1px solid rgba(0,229,255,0.2); }
+        .channel-card.active-channel { border: 2px solid #00e5ff; background: linear-gradient(145deg, #0a1a2f, #021122); }
+        .channel-card img { width: 70px; height: 70px; object-fit: contain; margin-bottom: 12px; border-radius: 20px; }
+        .footer { background: #020817cc; margin-top: 40px; padding: 24px; text-align: center; }
+        .stats-row { display: flex; justify-content: center; gap: 28px; flex-wrap: wrap; margin-bottom: 12px; }
+        @media (max-width: 760px) { .channel-grid { grid-template-columns: repeat(auto-fill, minmax(140px,1fr)); } }
+    </style>
+</head>
+<body>
+
+<div id="app">
+    <header class="header">
+        <div class="logo-area">
+            <div class="site-logo">🅰️➕Ⓜ️</div>
+            <div class="title-sub">
+                <h1 id="siteNameHeader">A+M TV Stream</h1>
+                <p>Database IPTV Platform</p>
+            </div>
+        </div>
+        <div style="display: flex; gap: 18px; align-items: center;">
+            <div class="live-badge"><i class="fas fa-circle" style="font-size: 10px;"></i> LIVE</div>
+            <a href="admin.html" class="admin-link"><i class="fas fa-shield-alt"></i> Admin</a>
+        </div>
+    </header>
+
+    <div class="ticker-wrap">
+        <div class="ticker" id="tickerText"></div>
+    </div>
+
+    <div class="player-section">
+        <div class="video-container">
+            <video id="videoPlayer" preload="auto" autoplay muted></video>
+            <div class="channel-overlay">
+                <img id="overlayLogo" src="https://placehold.co/40x40">
+                <div><strong id="overlayName">Loading...</strong> <span id="overlayCountry"></span></div>
+            </div>
+            <div class="time-overlay" id="currentTimeOverlay">--:--</div>
+            <div class="buffer-animation" id="bufferAnim"></div>
+        </div>
+        <div class="player-controls">
+            <button class="ctrl-btn" id="playPauseBtn"><i class="fas fa-play"></i></button>
+            <button class="ctrl-btn" id="muteBtn"><i class="fas fa-volume-up"></i></button>
+            <button class="ctrl-btn" id="fullscreenBtn"><i class="fas fa-expand"></i></button>
+        </div>
+    </div>
+
+    <div class="search-filter-area">
+        <div class="search-box"><i class="fas fa-search"></i><input type="text" id="searchInput" placeholder="Search channels..."></div>
+        <div class="filter-group" id="filterGroup"></div>
+    </div>
+
+    <div class="channel-grid" id="channelGrid"></div>
+
+    <div class="footer">
+        <div class="stats-row">
+            <span><i class="fas fa-eye"></i> Total Visitors: <span id="totalVisitors">0</span></span>
+            <span><i class="fas fa-user-friends"></i> Online Users: <span id="onlineUsers">0</span></span>
+        </div>
+        <div>© 2026 A+M TV Stream | Powered by Database</div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = 'api/';
+    let currentChannel = null;
+    let hlsInstance = null;
+    const video = document.getElementById('videoPlayer');
+
+    async function fetchChannels() {
+        const search = document.getElementById('searchInput').value;
+        const activeFilter = document.querySelector('.filter-chip.active')?.dataset.cat || 'All';
+        let url = `${API_BASE}get_channels.php`;
+        if (activeFilter !== 'All') url += `?category=${encodeURIComponent(activeFilter)}`;
+        if (search) url += `${activeFilter !== 'All' ? '&' : '?'}search=${encodeURIComponent(search)}`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.success) {
+            return data;
+        }
+        return { channels: [], categories: ['All'] };
+    }
+
+    async function fetchTicker() {
+        const response = await fetch(`${API_BASE}get_ticker.php`);
+        const data = await response.json();
+        if (data.success && data.messages) {
+            const tickerDiv = document.getElementById('tickerText');
+            let msgText = data.messages.map(m => escapeHtml(m)).join(' • ');
+            tickerDiv.innerHTML = `<i class="fas fa-shield-alt"></i> ${msgText}  •  `;
+            tickerDiv.innerHTML += tickerDiv.innerHTML;
+        }
+    }
+
+    async function fetchStats() {
+        const response = await fetch(`${API_BASE}get_stats.php`);
+        const data = await response.json();
+        if (data.success) {
+            document.getElementById('totalVisitors').innerText = data.total_visits || 0;
+            document.getElementById('onlineUsers').innerText = data.online_users || 0;
+        }
+    }
+
+    function initPlayer(url) {
+        if (hlsInstance) { hlsInstance.destroy(); hlsInstance = null; }
+        if (url && url.includes('.m3u8') && Hls.isSupported()) {
+            hlsInstance = new Hls();
+            hlsInstance.loadSource(url);
+            hlsInstance.attachMedia(video);
+            hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(e => console.log));
+        } else if (url) {
+            video.src = url;
+            video.play().catch(e => console.log);
+        }
+    }
+
+    function setActiveChannel(channel) {
+        if (!channel) return;
+        currentChannel = channel;
+        document.getElementById('overlayLogo').src = channel.logo || 'https://placehold.co/40';
+        document.getElementById('overlayName').innerText = channel.name;
+        document.getElementById('overlayCountry').innerText = channel.country || '';
+        initPlayer(channel.stream_url);
+        renderChannelGrid();
+        updateStatsCount();
+    }
+
+    async function renderChannelGrid() {
+        const data = await fetchChannels();
+        const channels = data.channels;
+        const grid = document.getElementById('channelGrid');
+        grid.innerHTML = channels.map(ch => `
+            <div class="channel-card ${currentChannel?.id === ch.id ? 'active-channel' : ''}" data-id="${ch.id}">
+                <img src="${ch.logo}" onerror="this.src='https://placehold.co/70'">
+                <h4>${escapeHtml(ch.name)}</h4>
+                <p>${escapeHtml(ch.country || '')}</p>
+            </div>
+        `).join('');
+        
+        document.querySelectorAll('.channel-card').forEach(card => {
+            card.addEventListener('click', () => {
+                const id = parseInt(card.dataset.id);
+                const found = channels.find(c => c.id === id);
+                if (found) setActiveChannel(found);
+            });
+        });
+        
+        // Render filters
+        const categories = data.categories || ['All'];
+        const filterContainer = document.getElementById('filterGroup');
+        filterContainer.innerHTML = categories.map(cat => `
+            <div class="filter-chip ${cat === 'All' ? 'active' : ''}" data-cat="${cat}">${escapeHtml(cat)}</div>
+        `).join('');
+        
+        document.querySelectorAll('.filter-chip').forEach(chip => {
+            chip.addEventListener('click', () => {
+                document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                renderChannelGrid();
+            });
+        });
+    }
+
+    async function updateStatsCount() {
+        if (currentChannel) {
+            await fetch(`${API_BASE}update_stats.php`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ total_visits: 1 })
+            });
+            fetchStats();
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Event listeners
+    document.getElementById('playPauseBtn').onclick = () => video.paused ? video.play() : video.pause();
+    document.getElementById('muteBtn').onclick = () => video.muted = !video.muted;
+    document.getElementById('fullscreenBtn').onclick = () => video.requestFullscreen();
+    video.addEventListener('waiting', () => document.getElementById('bufferAnim').style.display = 'block');
+    video.addEventListener('canplay', () => document.getElementById('bufferAnim').style.display = 'none');
+    document.getElementById('searchInput').addEventListener('input', () => renderChannelGrid());
+
+    function updateTimeOverlay() {
+        document.getElementById('currentTimeOverlay').innerHTML = new Date().toLocaleTimeString();
+    }
+    setInterval(updateTimeOverlay, 1000);
+    setInterval(() => {
+        fetch(`${API_BASE}update_stats.php`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ online_users: Math.floor(150 + Math.random() * 350) })
+        });
+        fetchStats();
+    }, 30000);
+
+    // Initial load
+    async function init() {
+        await renderChannelGrid();
+        await fetchTicker();
+        await fetchStats();
+        const data = await fetchChannels();
+        if (data.channels && data.channels.length > 0) {
+            setActiveChannel(data.channels[0]);
+        }
+    }
+    init();
+</script>
+</body>
+</html>

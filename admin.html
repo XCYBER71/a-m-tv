@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A+M TV - Admin Panel</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #0a0e27; color: #fff; }
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: linear-gradient(135deg, #0a0e27, #1a1f3a);
+        }
+        .login-box {
+            background: #151b3a;
+            padding: 40px;
+            border-radius: 20px;
+            width: 350px;
+            text-align: center;
+            border: 1px solid #00e5ff;
+        }
+        .login-box input {
+            width: 100%;
+            padding: 12px;
+            margin: 10px 0;
+            background: #0a0e27;
+            border: 1px solid #2a3a6e;
+            border-radius: 10px;
+            color: white;
+        }
+        .btn {
+            padding: 12px 30px;
+            background: #00e5ff;
+            color: #0a0e27;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .btn-danger { background: #ff4444; color: white; }
+        .admin-container { padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .header { background: #151b3a; padding: 15px; border-radius: 10px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .card { background: #151b3a; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
+        .card h3 { margin-bottom: 15px; color: #00e5ff; }
+        input, select { padding: 10px; margin: 5px; background: #0a0e27; border: 1px solid #2a3a6e; color: white; border-radius: 8px; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #2a3a6e; }
+        .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .stat-box { background: #151b3a; padding: 20px; text-align: center; border-radius: 15px; }
+        .stat-box h2 { font-size: 2rem; color: #00e5ff; }
+        button { padding: 8px 15px; margin: 3px; border: none; border-radius: 8px; cursor: pointer; }
+        .edit-btn { background: #00e5ff; color: #0a0e27; }
+        .delete-btn { background: #ff4444; color: white; }
+        .ticker-item { background: #0a0e27; padding: 10px; margin: 5px 0; border-radius: 8px; display: flex; justify-content: space-between; }
+    </style>
+</head>
+<body>
+<div id="app">
+    <!-- Login Section -->
+    <div id="loginSection" class="login-container">
+        <div class="login-box">
+            <i class="fas fa-shield-alt" style="font-size: 50px; color: #00e5ff; margin-bottom: 20px;"></i>
+            <h2>Admin Login</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button class="btn" onclick="login()">Login</button>
+            <div id="loginError" style="color: #ff6666; margin-top: 15px;"></div>
+        </div>
+    </div>
+
+    <!-- Dashboard Section -->
+    <div id="dashboard" style="display: none;">
+        <div class="admin-container">
+            <div class="header">
+                <h2><i class="fas fa-tv"></i> A+M TV Admin Panel</h2>
+                <button class="btn-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats">
+                <div class="stat-box"><i class="fas fa-tv"></i><h2 id="totalChannels">0</h2><p>Total Channels</p></div>
+                <div class="stat-box"><i class="fas fa-eye"></i><h2 id="totalVisits">0</h2><p>Total Views</p></div>
+                <div class="stat-box"><i class="fas fa-users"></i><h2 id="onlineUsers">0</h2><p>Online Users</p></div>
+            </div>
+
+            <!-- Add Channel -->
+            <div class="card">
+                <h3><i class="fas fa-plus"></i> Add New Channel</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px;">
+                    <input type="text" id="chName" placeholder="Channel Name">
+                    <input type="text" id="chLogo" placeholder="Logo URL">
+                    <input type="text" id="chStreamUrl" placeholder="Stream URL">
+                    <input type="text" id="chCategory" placeholder="Category">
+                    <input type="text" id="chCountry" placeholder="Country">
+                </div>
+                <button class="btn" onclick="addChannel()" style="margin-top: 15px;">Add Channel</button>
+            </div>
+
+            <!-- Channels List -->
+            <div class="card">
+                <h3><i class="fas fa-list"></i> Channels List</h3>
+                <div style="overflow-x: auto;">
+                    <table>
+                        <thead><tr><th>Logo</th><th>Name</th><th>Category</th><th>Country</th><th>Actions</th></tr></thead>
+                        <tbody id="channelsList"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Ticker Messages -->
+            <div class="card">
+                <h3><i class="fas fa-newspaper"></i> News Ticker</h3>
+                <div style="display: flex; gap: 10px; margin-bottom: 15px;">
+                    <input type="text" id="tickerMsg" style="flex: 1;" placeholder="Enter news message">
+                    <button class="btn" onclick="addTicker()">Add</button>
+                </div>
+                <div id="tickerList"></div>
+            </div>
+
+            <!-- Settings -->
+            <div class="card">
+                <h3><i class="fas fa-cog"></i> Settings</h3>
+                <div style="display: flex; gap: 10px;">
+                    <input type="text" id="siteName" placeholder="Site Name" style="flex: 1;">
+                    <button class="btn" onclick="saveSettings()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const API_BASE = 'api/';
+    
+    async function apiCall(endpoint, method = 'GET', data = null) {
+        try {
+            const options = { method, headers: { 'Content-Type': 'application/json' } };
+            if (data) options.body = JSON.stringify(data);
+            const response = await fetch(API_BASE + endpoint, options);
+            return await response.json();
+        } catch (error) {
+            console.error('API Error:', error);
+            return { success: false, error: error.message };
+        }
+    }
+
+    async function login() {
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        const result = await apiCall('admin_login.php', 'POST', { username, password });
+        
+        if (result.success) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadAllData();
+        } else {
+            document.getElementById('loginError').innerHTML = 'Login failed: ' + (result.error || 'Invalid credentials');
+        }
+    }
+
+    async function logout() {
+        await apiCall('logout.php', 'POST');
+        location.reload();
+    }
+
+    async function loadChannels() {
+        const result = await apiCall('get_channels.php');
+        if (result.success && result.channels) {
+            const tbody = document.getElementById('channelsList');
+            tbody.innerHTML = result.channels.map(ch => `
+                <tr>
+                    <td><img src="${ch.logo}" width="40" onerror="this.src='https://placehold.co/40'"></td>
+                    <td>${escapeHtml(ch.name)}</td>
+                    <td>${escapeHtml(ch.category)}</td>
+                    <td>${escapeHtml(ch.country)}</td>
+                    <td>
+                        <button class="edit-btn" onclick="editChannel(${ch.id})">Edit</button>
+                        <button class="delete-btn" onclick="deleteChannel(${ch.id})">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+            document.getElementById('totalChannels').innerText = result.channels.length;
+        }
+    }
+
+    async function loadTicker() {
+        const result = await apiCall('get_ticker.php');
+        if (result.success && result.messages) {
+            const container = document.getElementById('tickerList');
+            container.innerHTML = result.messages.map((msg, idx) => `
+                <div class="ticker-item">
+                    <span>📢 ${escapeHtml(msg)}</span>
+                    <button class="delete-btn" onclick="deleteTicker(${idx + 1})">Remove</button>
+                </div>
+            `).join('');
+        }
+    }
+
+    async function loadStats() {
+        const result = await apiCall('get_stats.php');
+        if (result.success) {
+            document.getElementById('totalVisits').innerText = result.total_visits || 0;
+            document.getElementById('onlineUsers').innerText = result.online_users || 0;
+        }
+    }
+
+    async function loadSettings() {
+        const result = await apiCall('get_settings.php');
+        if (result.success) {
+            document.getElementById('siteName').value = result.site_name || 'A+M TV Stream';
+        }
+    }
+
+    async function loadAllData() {
+        await loadChannels();
+        await loadTicker();
+        await loadStats();
+        await loadSettings();
+    }
+
+    async function addChannel() {
+        const channel = {
+            name: document.getElementById('chName').value,
+            logo: document.getElementById('chLogo').value,
+            stream_url: document.getElementById('chStreamUrl').value,
+            category: document.getElementById('chCategory').value,
+            country: document.getElementById('chCountry').value
+        };
+        
+        if (!channel.name || !channel.stream_url) {
+            alert('Please fill Channel Name and Stream URL');
+            return;
+        }
+        
+        const result = await apiCall('add_channel.php', 'POST', channel);
+        if (result.success) {
+            alert('Channel added!');
+            document.getElementById('chName').value = '';
+            document.getElementById('chLogo').value = '';
+            document.getElementById('chStreamUrl').value = '';
+            document.getElementById('chCategory').value = '';
+            document.getElementById('chCountry').value = '';
+            loadChannels();
+            loadStats();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    }
+
+    window.editChannel = async (id) => {
+        const newName = prompt('Enter new channel name:');
+        if (newName) {
+            const result = await apiCall('edit_channel.php', 'POST', { id, name: newName });
+            if (result.success) loadChannels();
+        }
+    };
+
+    window.deleteChannel = async (id) => {
+        if (confirm('Delete this channel?')) {
+            const result = await apiCall('delete_channel.php', 'POST', { id });
+            if (result.success) {
+                loadChannels();
+                loadStats();
+            }
+        }
+    };
+
+    window.deleteTicker = async (id) => {
+        const result = await apiCall('delete_ticker.php', 'POST', { id });
+        if (result.success) loadTicker();
+    };
+
+    async function addTicker() {
+        const message = document.getElementById('tickerMsg').value;
+        if (message) {
+            const result = await apiCall('add_ticker.php', 'POST', { message });
+            if (result.success) {
+                document.getElementById('tickerMsg').value = '';
+                loadTicker();
+            }
+        }
+    }
+
+    async function saveSettings() {
+        const site_name = document.getElementById('siteName').value;
+        const result = await apiCall('update_settings.php', 'POST', { site_name });
+        if (result.success) alert('Settings saved!');
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // Check if already logged in
+    async function checkSession() {
+        const result = await apiCall('check_session.php');
+        if (result.logged_in) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'block';
+            loadAllData();
+        }
+    }
+    
+    checkSession();
+</script>
+</body>
+</html>
